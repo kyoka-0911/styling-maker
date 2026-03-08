@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SHOOT PLANNER</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Sans+JP:wght@300;400;500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#F7F5F2;--surface:#FFF;--ink:#181614;--ink-2:#5A5650;--ink-3:#A8A49E;
+  --accent:#BFA882;--accent-soft:#EDE4D6;--line:#E4E0DA;
+  --done-bg:#EAF0EA;--done-border:#6B9B6B;--danger:#FAE8E8;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--ink);font-size:14px;display:flex;flex-direction:column;}
+
+/* HEADER */
+.hdr{background:var(--ink);color:var(--bg);padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:300;letter-spacing:.3em;}
+.back-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.8);padding:5px 11px;border-radius:2px;cursor:pointer;display:none;}
+.back-btn.on{display:block;}
+.hdr-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.14em;opacity:.65;margin-left:10px;}
+.hdr-r{display:flex;gap:7px;align-items:center;}
+
+/* MAIN */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;}
+.page{display:none;padding:18px 16px 80px;min-height:100%;}
+.page.on{display:block;}
+
+/* TYPOGRAPHY */
+.pg-head{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:300;letter-spacing:.06em;margin-bottom:3px;line-height:1.1;}
+.pg-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-3);letter-spacing:.16em;margin-bottom:24px;}
+.sec-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--ink-3);margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--line);}
+
+/* INPUTS */
+.inp{width:100%;border:1px solid var(--line);background:var(--bg);padding:9px 10px;font-family:'Noto Sans JP',sans-serif;font-size:13px;color:var(--ink);border-radius:2px;outline:none;transition:border-color .2s;}
+.inp:focus{border-color:var(--accent);}
+.sel{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23A8A49E'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer;}
+.flabel{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.16em;color:var(--ink-3);margin-bottom:4px;display:block;}
+.fgroup{margin-bottom:12px;}
+.frow2{display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-bottom:12px;}
+
+/* BUTTONS */
+.btn{font-family:'DM Mono',monospace;letter-spacing:.14em;border:none;border-radius:2px;cursor:pointer;transition:all .2s;}
+.btn-blk{background:var(--ink);color:var(--bg);padding:11px 16px;font-size:10px;}
+.btn-blk:hover{background:#2a2a2a;}
+.btn-blk-w{background:var(--ink);color:var(--bg);padding:11px 16px;font-size:10px;width:100%;}
+.btn-blk-w:hover{background:#2a2a2a;}
+.btn-out{background:transparent;border:1.5px solid var(--ink);color:var(--ink);padding:9px 14px;font-size:9px;}
+.btn-out:hover{background:var(--ink);color:var(--bg);}
+.btn-acc{background:var(--accent);color:var(--ink);padding:10px 16px;font-size:10px;}
+.btn-acc:hover{background:#a8935f;}
+.btn-danger{background:var(--danger);color:#c44;border:1px solid #e8b4b4;padding:9px 12px;font-size:9px;}
+.btn-danger:hover{background:#c44;color:#fff;border-color:#c44;}
+.btn-sm-out{background:transparent;border:1px solid var(--line);color:var(--ink-2);padding:5px 10px;font-size:9px;letter-spacing:.1em;}
+.btn-sm-out:hover{border-color:var(--accent);color:var(--accent);}
+
+/* DAY CARDS */
+.days-list{display:flex;flex-direction:column;gap:9px;margin-bottom:22px;}
+.day-card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:15px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .2s;position:relative;overflow:hidden;}
+.day-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transform-origin:bottom;transition:transform .2s;}
+.day-card:hover::before{transform:scaleY(1);}
+.day-card:hover{border-color:var(--accent);}
+.day-date{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;letter-spacing:.04em;}
+.day-meta{display:flex;gap:8px;margin-top:3px;align-items:center;flex-wrap:wrap;}
+.tag-week{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:1px;letter-spacing:.08em;}
+.tag-count{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-3);letter-spacing:.06em;}
+.day-del{background:transparent;border:none;font-size:13px;cursor:pointer;opacity:0;transition:opacity .2s;padding:5px;color:var(--ink-3);}
+.day-card:hover .day-del{opacity:.6;}
+.day-arrow{font-size:17px;opacity:.28;transition:opacity .2s;}
+.day-card:hover .day-arrow{opacity:.65;}
+
+/* ADD DAY FORM */
+.add-day-box{background:var(--surface);border:1.5px dashed var(--line);border-radius:4px;padding:16px;transition:border-color .2s;}
+.add-day-box:focus-within{border-color:var(--accent);}
+
+/* DETAIL NAV */
+.dnav{display:flex;gap:7px;margin-bottom:18px;border-bottom:1px solid var(--line);padding-bottom:12px;flex-wrap:wrap;}
+.dtab{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.13em;padding:5px 12px;border-radius:1px;cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--ink-3);transition:all .2s;}
+.dtab.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
+
+/* PROGRESS */
+.prog-wrap{margin-bottom:16px;}
+.prog-meta{display:flex;justify-content:space-between;margin-bottom:5px;}
+.prog-lbl{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-3);letter-spacing:.1em;}
+.prog-track{height:3px;background:var(--line);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .4s;}
+
+/* GROUP */
+.grp{margin-bottom:28px;}
+.grp-head{display:flex;align-items:center;gap:9px;margin-bottom:11px;padding-bottom:7px;border-bottom:1.5px solid var(--line);}
+.grp-name{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:400;letter-spacing:.06em;}
+.grp-badge{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);background:var(--accent-soft);padding:2px 6px;border-radius:1px;letter-spacing:.08em;}
+.grp-unassigned .grp-name{color:var(--ink-3);}
+.grp-unassigned .grp-badge{color:var(--ink-3);background:var(--line);}
+
+/* STYLING GRID */
+.s-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.s-card{background:var(--surface);border:1.5px solid var(--line);border-radius:3px;cursor:pointer;overflow:hidden;transition:all .2s;position:relative;}
+.s-card:hover{border-color:var(--accent);box-shadow:0 3px 14px rgba(0,0,0,.08);}
+.s-card.done{opacity:.5;border-color:var(--done-border);background:var(--done-bg);}
+.s-img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:var(--bg);}
+.s-noimg{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);flex-direction:column;gap:5px;}
+.s-noimg span{font-size:26px;opacity:.45;}
+.s-noimg small{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-3);letter-spacing:.08em;}
+.s-body{padding:9px;}
+.s-name{font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px;}
+.s-week{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent);letter-spacing:.06em;}
+.s-memo{font-size:10px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.done-dot{position:absolute;top:7px;right:7px;background:var(--done-border);color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;}
+
+/* EDIT PAGE */
+.edit-box{background:var(--surface);border-radius:4px;border:1px solid var(--line);padding:18px;}
+.photo-area{width:100%;aspect-ratio:3/4;max-width:220px;margin:0 auto 18px;border:1.5px dashed var(--line);border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;background:var(--bg);transition:border-color .2s;}
+.photo-area:hover{border-color:var(--accent);}
+.photo-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.photo-area img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.upload-hint{text-align:center;pointer-events:none;z-index:1;}
+.upload-hint span{font-size:32px;opacity:.3;display:block;margin-bottom:6px;}
+.upload-hint small{font-family:'DM Mono',monospace;font-size:9px;color:var(--ink-3);letter-spacing:.1em;}
+.eactions{display:flex;gap:9px;margin-top:18px;}
+
+/* BULK IMPORT PAGE */
+.bulk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.bulk-thumb-wrap{position:relative;aspect-ratio:3/4;border-radius:3px;overflow:hidden;border:1px solid var(--line);}
+.bulk-thumb{width:100%;height:100%;object-fit:cover;display:block;}
+.bulk-remove{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.bulk-drop{border:2px dashed var(--line);border-radius:4px;padding:32px 20px;text-align:center;transition:border-color .2s;cursor:pointer;position:relative;margin-bottom:14px;}
+.bulk-drop:hover,.bulk-drop.drag{border-color:var(--accent);}
+.bulk-drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.bulk-drop-icon{font-size:32px;opacity:.35;margin-bottom:8px;}
+.bulk-drop p{font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:.1em;line-height:1.8;}
+
+/* EXPORT BUTTONS */
+.export-row{display:flex;gap:8px;flex-wrap:wrap;}
+.export-row .btn{flex:1;min-width:120px;padding:10px 10px;font-size:9px;text-align:center;}
+
+/* FAB */
+.fab{position:fixed;bottom:22px;right:18px;width:46px;height:46px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:21px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.28);transition:all .2s;z-index:40;}
+.fab:hover{background:var(--accent);color:var(--ink);}
+.fab.off{display:none;}
+
+/* TOAST */
+.toast{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px;border-radius:99px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;opacity:0;pointer-events:none;transition:opacity .25s;z-index:999;white-space:nowrap;}
+.toast.on{opacity:1;}
+
+/* LOADING OVERLAY */
+.loading{position:fixed;inset:0;background:rgba(24,22,20,.75);z-index:300;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading.on{display:flex;}
+.loading p{color:#fff;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.15em;}
+.spinner{width:32px;height:32px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* MODAL */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.modal-ov.on{display:flex;}
+.modal-box{background:var(--surface);border-radius:8px 8px 0 0;padding:22px 18px 32px;width:100%;max-width:480px;animation:up .22s ease;}
+@keyframes up{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:400;letter-spacing:.05em;margin-bottom:14px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:44px 20px;color:var(--ink-3);}
+.empty-icon{font-size:38px;opacity:.3;margin-bottom:10px;}
+.empty p{font-size:11px;line-height:1.9;letter-spacing:.05em;}
+
+/* REF IMAGES */
+.ref-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+.ref-scroll::-webkit-scrollbar{display:none;}
+.ref-thumb-wrap{position:relative;flex-shrink:0;width:80px;height:80px;border-radius:4px;overflow:hidden;border:1px solid var(--line);}
+.ref-thumb{width:100%;height:100%;object-fit:cover;display:block;}
+.ref-remove{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.ref-add-btn{flex-shrink:0;width:80px;height:80px;border:1.5px dashed var(--line);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;background:var(--bg);transition:border-color .2s;gap:3px;}
+.ref-add-btn:hover{border-color:var(--accent);}
+.ref-add-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.ref-add-btn span{font-size:20px;opacity:.4;}
+.ref-add-btn small{font-family:'DM Mono',monospace;font-size:8px;color:var(--ink-3);letter-spacing:.08em;}
+/* iPhone: larger tap targets */
+@supports (-webkit-touch-callout: none){
+  .btn,.dtab,.day-card{min-height:44px;}
+  .fab{width:52px;height:52px;bottom:28px;right:20px;}
+  body{-webkit-text-size-adjust:100%;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div style="display:flex;align-items:center;">
+    <button class="back-btn btn" id="back-btn" onclick="goBack()">← BACK</button>
+    <div class="logo" id="hdr-logo">SHOOT PLANNER</div>
+    <div class="hdr-title" id="hdr-title"></div>
+  </div>
+  <div class="hdr-r" id="hdr-r"></div>
+</div>
+
+<div class="main" id="main">
+
+  <!-- ══ TOP ══ -->
+  <div class="page on" id="page-top">
+    <div class="pg-head">Shoot<br><em>Days</em></div>
+    <div class="pg-sub">撮影日を選択</div>
+    <div class="days-list" id="days-list"></div>
+    <div class="add-day-box">
+      <div class="sec-label">＋ NEW SHOOT DAY</div>
+      <div class="frow2">
+        <div class="fgroup" style="margin-bottom:0">
+          <label class="flabel">撮影日</label>
+          <input class="inp" type="date" id="nd-date">
+        </div>
+        <div class="fgroup" style="margin-bottom:0">
+          <label class="flabel">週区切り（5w など）</label>
+          <input class="inp" type="text" id="nd-week" placeholder="5w">
+        </div>
+      </div>
+      <div style="margin-top:10px"><button class="btn btn-blk-w" onclick="addDay()">＋ 追加</button></div>
+    </div>
+  </div>
+
+  <!-- ══ DETAIL ══ -->
+  <div class="page" id="page-detail">
+    <div class="dnav">
+      <button class="dtab on" id="dtab-list" onclick="setTab('list')">一覧</button>
+      <button class="dtab" id="dtab-shoot" onclick="setTab('shoot')">撮影チェック</button>
+      <button class="dtab" id="dtab-export" onclick="setTab('export')">出力</button>
+    </div>
+    <div class="prog-wrap" id="prog-wrap" style="display:none">
+      <div class="prog-meta">
+        <span class="prog-lbl">PROGRESS</span>
+        <span class="prog-lbl" id="prog-nums">0 / 0</span>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+
+  <!-- ══ EDIT ══ -->
+  <div class="page" id="page-edit">
+    <div class="edit-box">
+      <div class="sec-label">STYLING IMAGE</div>
+      <div class="photo-area" id="photo-area" onclick="document.getElementById('ef-file').click()">
+        <input type="file" id="ef-file" accept="image/*" onchange="onEditPhoto(this)">
+        <img id="ef-preview" style="display:none">
+        <div class="upload-hint" id="ef-hint">
+          <span>📷</span><small>タップして画像を追加</small>
+        </div>
+      </div>
+      <div class="sec-label">DETAILS</div>
+      <div class="fgroup">
+        <label class="flabel">スタイリング名</label>
+        <input class="inp" type="text" id="ef-name" placeholder="任意">
+      </div>
+      <div class="fgroup">
+        <label class="flabel">ボトムス</label>
+        <select class="inp sel" id="ef-bottoms-sel" onchange="onBotSel(this)">
+          <option value="">未分類</option>
+        </select>
+        <div id="ef-bot-new-wrap" style="display:none;margin-top:6px">
+          <input class="inp" type="text" id="ef-bot-new" placeholder="新しいボトムス名">
+        </div>
+      </div>
+      <div class="fgroup">
+        <label class="flabel">メモ</label>
+        <textarea class="inp" id="ef-memo" rows="3" style="resize:vertical" placeholder="任意"></textarea>
+      </div>
+      <div class="fgroup">
+        <label class="flabel">参考画像（ポーズ・POP など）</label>
+        <div class="ref-scroll" id="ef-ref-scroll">
+          <div class="ref-add-btn" onclick="document.getElementById('ef-ref-file').click()">
+            <input type="file" id="ef-ref-file" accept="image/*" multiple onchange="onRefPhotos(this)">
+            <span>＋</span>
+            <small>追加</small>
+          </div>
+        </div>
+      </div>
+      <div class="eactions">
+        <button class="btn btn-blk-w" onclick="saveEdit()" style="flex:1">保存</button>
+        <button class="btn btn-danger" id="ef-del" onclick="deleteStyling()" style="display:none">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ BULK IMPORT ══ -->
+  <div class="page" id="page-bulk">
+    <div class="pg-head">一括登録</div>
+    <div class="pg-sub">複数の写真をまとめて追加</div>
+    <div class="bulk-drop" id="bulk-drop">
+      <input type="file" id="bulk-file" accept="image/*" multiple onchange="onBulkFiles(this)">
+      <div class="bulk-drop-icon">📂</div>
+      <p>タップして複数写真を選択<br>（JPG / PNG / HEIC）</p>
+    </div>
+    <div class="bulk-grid" id="bulk-grid"></div>
+    <div id="bulk-confirm-area" style="display:none">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ink-3);letter-spacing:.1em;margin-bottom:10px;">選択した写真が「未分類」に追加されます。<br>あとでボトムスを割り当ててください。</p>
+      <button class="btn btn-blk-w" onclick="confirmBulk()">＋ 一括登録する</button>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<button class="fab off" id="fab" onclick="fabClick()">＋</button>
+<div class="toast" id="toast"></div>
+<div class="loading" id="loading"><div class="spinner"></div><p id="loading-msg">生成中...</p></div>
+
+<!-- DELETE DAY MODAL -->
+<div class="modal-ov" id="modal-del-day">
+  <div class="modal-box">
+    <div class="modal-title">撮影日を削除しますか？</div>
+    <p style="font-size:12px;color:var(--ink-2);margin-bottom:18px;line-height:1.7">この撮影日のスタイリングデータがすべて削除されます。</p>
+    <div style="display:flex;gap:9px">
+      <button class="btn btn-out" style="flex:1" onclick="closeModal('modal-del-day')">キャンセル</button>
+      <button class="btn btn-danger" style="flex:1" onclick="confirmDelDay()">削除する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════
+//  STATE
+// ═══════════════════════════════
+let S={
+  days:[],
+  dayId:null,
+  stylingId:null,
+  editPhoto:null,
+  editRefPhotos:[], // [{dataUrl, id}]
+  tab:'list',
+  delDayId:null,
+  bulkPhotos:[],
+};
+const STORE='sp_v3';
+function save(){try{localStorage.setItem(STORE,JSON.stringify(S.days));}catch(e){toast('データ保存失敗（容量超過の可能性）');}}
+function load(){try{const d=localStorage.getItem(STORE);if(d)S.days=JSON.parse(d);}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function getDay(id){return S.days.find(d=>d.id===id);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ═══════════════════════════════
+//  TOAST / LOADING
+// ═══════════════════════════════
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('on');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2200);
+}
+function showLoading(msg='生成中...'){
+  document.getElementById('loading-msg').textContent=msg;
+  document.getElementById('loading').classList.add('on');
+}
+function hideLoading(){document.getElementById('loading').classList.remove('on');}
+
+// ═══════════════════════════════
+//  NAV
+// ═══════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  document.getElementById('main').scrollTop=0;
+}
+function goBack(){
+  const cur=document.querySelector('.page.on').id;
+  if(cur==='page-edit'||cur==='page-bulk'){showPage('detail');renderDetail();setHdr('detail');}
+  else if(cur==='page-detail'){showPage('top');renderTop();setHdr('top');}
+}
+function setHdr(p){
+  const logo=document.getElementById('hdr-logo');
+  const title=document.getElementById('hdr-title');
+  const back=document.getElementById('back-btn');
+  const r=document.getElementById('hdr-r');
+  const fab=document.getElementById('fab');
+  back.classList.remove('on');logo.style.display='block';title.textContent='';r.innerHTML='';fab.classList.add('off');
+  if(p==='detail'){
+    back.classList.add('on');logo.style.display='none';
+    const d=getDay(S.dayId);
+    title.textContent=d?fmtDate(d.date):'';
+    fab.classList.remove('off');
+  }
+  if(p==='edit'){back.classList.add('on');logo.style.display='none';title.textContent=S.stylingId?'EDIT':'NEW STYLING';}
+  if(p==='bulk'){back.classList.add('on');logo.style.display='none';title.textContent='BULK IMPORT';}
+}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+
+function fmtDate(d){
+  if(!d)return'';
+  return new Date(d+'T00:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+}
+
+// ═══════════════════════════════
+//  TOP
+// ═══════════════════════════════
+function renderTop(){
+  const el=document.getElementById('days-list');
+  if(!S.days.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📅</div><p>まだ撮影日がありません</p></div>`;return;
+  }
+  el.innerHTML=S.days.map(d=>{
+    const cnt=d.stylings?.length||0;
+    const done=d.stylings?.filter(s=>s.done).length||0;
+    return`<div class="day-card" onclick="openDay('${d.id}')">
+      <div>
+        <div class="day-date">${esc(fmtDate(d.date))}</div>
+        <div class="day-meta">
+          ${d.week?`<span class="tag-week">${esc(d.week)}</span>`:''}
+          <span class="tag-count">${cnt}スタイリング${cnt?` · ${done}/${cnt}完了`:''}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <button class="day-del btn" onclick="event.stopPropagation();openDelDay('${d.id}')">🗑</button>
+        <div class="day-arrow">›</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function addDay(){
+  const date=document.getElementById('nd-date').value;
+  const week=document.getElementById('nd-week').value.trim();
+  if(!date){toast('日付を選択してください');return;}
+  S.days.push({id:uid(),date,week,stylings:[],bottoms:[]});
+  S.days.sort((a,b)=>a.date>b.date?1:-1);
+  save();renderTop();
+  document.getElementById('nd-date').value='';
+  document.getElementById('nd-week').value='';
+  toast('撮影日を追加しました');
+}
+function openDelDay(id){S.delDayId=id;document.getElementById('modal-del-day').classList.add('on');}
+function confirmDelDay(){
+  S.days=S.days.filter(d=>d.id!==S.delDayId);
+  save();renderTop();closeModal('modal-del-day');toast('削除しました');
+}
+
+// ═══════════════════════════════
+//  DETAIL
+// ═══════════════════════════════
+function openDay(id){
+  S.dayId=id;S.tab='list';
+  showPage('detail');setHdr('detail');renderDetail();
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('dtab-list').classList.add('on');
+  document.getElementById('prog-wrap').style.display='none';
+}
+function setTab(tab){
+  S.tab=tab;
+  document.querySelectorAll('.dtab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('dtab-'+tab).classList.add('on');
+  document.getElementById('prog-wrap').style.display=tab==='shoot'?'block':'none';
+  renderDetail();
+}
+function renderDetail(){
+  const day=getDay(S.dayId);if(!day)return;
+  const el=document.getElementById('detail-content');
+  const stylings=day.stylings||[];
+  if(S.tab==='export'){renderExport();return;}
+  if(!stylings.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">👗</div><p>スタイリングがありません<br>右下 ＋ から追加してください</p></div>`;
+    return;
+  }
+  const isShoot=S.tab==='shoot';
+  // group by bottoms — unassigned last
+  const map=new Map();
+  stylings.forEach(s=>{
+    const k=s.bottoms||'';
+    if(!map.has(k))map.set(k,[]);
+    map.get(k).push(s);
+  });
+  // sort: assigned first, '' (unassigned) last
+  const keys=[...map.keys()].sort((a,b)=>{
+    if(a===''&&b!=='')return 1;if(a!==''&&b==='')return -1;return a>b?1:-1;
+  });
+  let html='';
+  keys.forEach(k=>{
+    const items=map.get(k);
+    const label=k||'未分類';
+    const isUn=k==='';
+    html+=`<div class="grp${isUn?' grp-unassigned':''}">
+      <div class="grp-head">
+        <div class="grp-name">${esc(label)}</div>
+        <div class="grp-badge">${items.length} looks</div>
+      </div>
+      <div class="s-grid">`;
+    items.forEach(s=>{
+      const img=s.photo
+        ?`<img class="s-img" src="${s.photo}" loading="lazy">`
+        :`<div class="s-noimg"><span>👗</span><small>NO IMAGE</small></div>`;
+      html+=`<div class="s-card${s.done&&isShoot?' done':''}" onclick="${isShoot?`toggleDone('${s.id}')`:`openEdit('${s.id}')`}">
+        ${img}
+        ${s.done&&isShoot?'<div class="done-dot">✓</div>':''}
+        <div class="s-body">
+          ${s.name?`<div class="s-name">${esc(s.name)}</div>`:''}
+          ${s.week?`<div class="s-week">${esc(s.week)}</div>`:''}
+          ${s.memo?`<div class="s-memo">${esc(s.memo)}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  el.innerHTML=html;
+  if(isShoot)updateProg();
+}
+function updateProg(){
+  const day=getDay(S.dayId);if(!day)return;
+  const tot=day.stylings.length,done=day.stylings.filter(s=>s.done).length;
+  document.getElementById('prog-nums').textContent=`${done} / ${tot}`;
+  document.getElementById('prog-fill').style.width=tot?(done/tot*100)+'%':'0%';
+}
+function toggleDone(id){
+  const day=getDay(S.dayId);const s=day.stylings.find(x=>x.id===id);if(!s)return;
+  s.done=!s.done;save();renderDetail();
+}
+
+// ═══════════════════════════════
+//  EXPORT TAB
+// ═══════════════════════════════
+function renderExport(){
+  const el=document.getElementById('detail-content');
+  el.innerHTML=`
+    <div style="margin-bottom:20px">
+      <div class="sec-label">PDF 出力（ボトムスごとに1ページ）</div>
+      <p style="font-size:11px;color:var(--ink-2);line-height:1.8;margin-bottom:12px">各ボトムスグループのスタイリング画像をグリッドでPDF化します。</p>
+      <button class="btn btn-blk-w" onclick="exportPDF()">📄 PDF をダウンロード</button>
+    </div>
+    <div>
+      <div class="sec-label">Google スライド用 PPTX 出力（1グループ＝1スライド）</div>
+      <p style="font-size:11px;color:var(--ink-2);line-height:1.8;margin-bottom:12px">PowerPoint形式でダウンロード後、Googleドライブにアップロードしてスライドとして開けます。</p>
+      <button class="btn btn-acc btn" style="width:100%" onclick="exportPPTX()">📊 PPTX をダウンロード</button>
+    </div>
+  `;
+}
+
+// ─── PDF ───
+async function exportPDF(){
+  const day=getDay(S.dayId);if(!day||!day.stylings.length){toast('スタイリングがありません');return;}
+  showLoading('PDF生成中...');
+  await new Promise(r=>setTimeout(r,50));
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+    const PW=297,PH=210,MARGIN=12,GAP=6;
+
+    // group
+    const map=new Map();
+    day.stylings.forEach(s=>{const k=s.bottoms||'未分類';if(!map.has(k))map.set(k,[]);map.get(k).push(s);});
+    const keys=[...map.keys()].sort((a,b)=>{if(a==='未分類'&&b!=='未分類')return 1;if(a!=='未分類'&&b==='未分類')return-1;return a>b?1:-1;});
+    let first=true;
+    for(const k of keys){
+      if(!first)doc.addPage();first=false;
+      const items=map.get(k);
+      // header
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(18);doc.setTextColor(24,22,20);
+      doc.text(k,MARGIN,MARGIN+7);
+      doc.setFontSize(9);doc.setTextColor(168,164,158);
+      doc.text(`${items.length} looks  ·  ${fmtDate(day.date)}${day.week?' · '+day.week:''}`,MARGIN,MARGIN+13);
+      doc.setDrawColor(228,224,218);doc.setLineWidth(0.3);
+      doc.line(MARGIN,MARGIN+16,PW-MARGIN,MARGIN+16);
+
+      const startY=MARGIN+22;
+      const cols=Math.min(items.length,5);
+      const cardW=(PW-MARGIN*2-(cols-1)*GAP)/cols;
+      const cardH=(PH-startY-MARGIN);
+      const imgH=cardH-10;
+
+      for(let i=0;i<items.length;i++){
+        const s=items[i];
+        const col=i%cols;
+        const row=Math.floor(i/cols);
+        const x=MARGIN+col*(cardW+GAP);
+        const y=startY+row*(cardH+GAP);
+        if(s.photo){
+          try{
+            const {w:iw,h:ih}=await imgDims(s.photo);
+            const ratio=iw/ih;
+            let dw=cardW,dh=cardW/ratio;
+            if(dh>imgH){dh=imgH;dw=imgH*ratio;}
+            const ox=x+(cardW-dw)/2;
+            doc.addImage(s.photo,'JPEG',ox,y,dw,dh);
+          }catch(e){
+            doc.setFillColor(237,228,214);doc.rect(x,y,cardW,imgH,'F');
+          }
+        }else{
+          doc.setFillColor(237,228,214);doc.rect(x,y,cardW,imgH,'F');
+        }
+        if(s.name){
+          doc.setFontSize(7);doc.setTextColor(24,22,20);
+          doc.text(s.name.slice(0,16),x+cardW/2,y+imgH+5,{align:'center'});
+        }
+      }
+    }
+    doc.save(`shoot-${day.date||'plan'}.pdf`);
+    toast('PDF を保存しました');
+  }catch(e){toast('PDF生成エラー: '+e.message);console.error(e);}
+  hideLoading();
+}
+
+function imgDims(src){
+  return new Promise((res,rej)=>{
+    const i=new Image();i.onload=()=>res({w:i.width,h:i.height});i.onerror=rej;i.src=src;
+  });
+}
+
+// ─── PPTX ───
+async function exportPPTX(){
+  const day=getDay(S.dayId);if(!day||!day.stylings.length){toast('スタイリングがありません');return;}
+  showLoading('PPTX生成中...');
+  await new Promise(r=>setTimeout(r,50));
+  try{
+    // group
+    const map=new Map();
+    day.stylings.forEach(s=>{const k=s.bottoms||'未分類';if(!map.has(k))map.set(k,[]);map.get(k).push(s);});
+    const keys=[...map.keys()].sort((a,b)=>{if(a==='未分類'&&b!=='未分類')return 1;if(a!=='未分類'&&b==='未分類')return-1;return a>b?1:-1;});
+
+    // slide dimensions: 25.4cm x 19.05cm (widescreen ~1920x1440 → use 9144000 x 6858000 EMU)
+    const SW=9144000,SH=6858000; // EMU (1cm=360000)
+    const slides=[];
+
+    for(const k of keys){
+      const items=map.get(k);
+      const pics=[];
+      const cols=Math.min(items.length,5);
+      const margin=457200; // 1.27cm
+      const gap=228600;    // 0.635cm
+      const headerH=685800;// 1.9cm
+      const availW=SW-margin*2-(cols-1)*gap;
+      const cardW=Math.floor(availW/cols);
+      const availH=SH-margin*2-headerH-gap;
+      const imgH=Math.floor(availH*0.88);
+
+      for(let i=0;i<items.length;i++){
+        const s=items[i];
+        const col=i%cols;
+        const row=Math.floor(i/cols);
+        const x=margin+col*(cardW+gap);
+        const y=margin+headerH+gap+row*(availH+gap);
+        if(s.photo){
+          let dw=cardW,dh=imgH;
+          try{
+            const {w:iw,h:ih}=await imgDims(s.photo);
+            const ratio=iw/ih;
+            dh=Math.floor(cardW/ratio);
+            if(dh>imgH){dh=imgH;dw=Math.floor(imgH*ratio);}
+          }catch(e){}
+          const ox=x+Math.floor((cardW-dw)/2);
+          const b64=s.photo.split(',')[1]||'';
+          const ext=s.photo.startsWith('data:image/png')?'png':'jpeg';
+          pics.push({b64,ext,x:ox,y,w:dw,h:dh,name:s.name||''});
+        }
+      }
+      slides.push({title:k,count:items.length,pics,date:fmtDate(day.date),week:day.week||''});
+    }
+
+    const zip=new JSZip();
+    // rels
+    zip.file('[Content_Types].xml',contentTypesXML());
+    zip.file('_rels/.rels',relsXML());
+    zip.file('ppt/presentation.xml',presentationXML(slides.length));
+    zip.file('ppt/_rels/presentation.xml.rels',presRelsXML(slides.length));
+    zip.file('ppt/theme/theme1.xml',themeXML());
+
+    for(let i=0;i<slides.length;i++){
+      const sl=slides[i];
+      const rels=[];
+      const shapeXmls=[];
+
+      // title text
+      shapeXmls.push(textBox(457200,228600,SW-914400,457200,sl.title,32,'1A1814',true));
+      shapeXmls.push(textBox(457200,686400,SW-914400,228600,`${sl.count} looks${sl.date?' · '+sl.date:''}${sl.week?' · '+sl.week:''}`,11,'A8A49E',false));
+
+      // images
+      for(let j=0;j<sl.pics.length;j++){
+        const p=sl.pics[j];
+        const rId=`rId${j+2}`;
+        rels.push({rId,ext:p.ext,b64:p.b64,idx:j});
+        shapeXmls.push(imgShape(rId,p.x,p.y,p.w,p.h));
+        if(p.name){
+          shapeXmls.push(textBox(p.x,p.y+p.h+36000,p.w,160000,p.name,8,'5A5650',false));
+        }
+        // store image
+        zip.file(`ppt/media/img_${i}_${j}.${p.ext}`,p.b64,{base64:true});
+      }
+
+      zip.file(`ppt/slides/slide${i+1}.xml`,slideXML(shapeXmls));
+      zip.file(`ppt/slides/_rels/slide${i+1}.xml.rels`,slideRelsXML(rels,i));
+      zip.file(`ppt/slideLayouts/slideLayout${i+1}.xml`,layoutXML());
+      zip.file(`ppt/slideLayouts/_rels/slideLayout${i+1}.xml.rels`,layoutRelsXML());
+    }
+    zip.file('ppt/slideMasters/slideMaster1.xml',masterXML());
+    zip.file('ppt/slideMasters/_rels/slideMaster1.xml.rels',masterRelsXML(slides.length));
+
+    const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`shoot-${day.date||'plan'}.pptx`;
+    a.click();
+    toast('PPTX を保存しました');
+  }catch(e){toast('PPTX生成エラー: '+e.message);console.error(e);}
+  hideLoading();
+}
+
+// PPTX XML helpers
+function emu(n){return Math.round(n);}
+function xmlEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function textBox(x,y,w,h,text,sz,hexColor,bold){
+  return`<p:sp><p:nvSpPr><p:cNvPr id="${uid()}" name="t"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(w)}" cy="${emu(h)}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
+<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="ja-JP" sz="${sz*100}" b="${bold?1:0}" dirty="0"><a:solidFill><a:srgbClr val="${hexColor}"/></a:solidFill></a:rPr>
+<a:t>${xmlEsc(text)}</a:t></a:r></a:p></p:txBody></p:sp>`;
+}
+function imgShape(rId,x,y,w,h){
+  return`<p:pic><p:nvPicPr><p:cNvPr id="${uid()}" name="img"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+<p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+<p:spPr><a:xfrm><a:off x="${emu(x)}" y="${emu(y)}"/><a:ext cx="${emu(w)}" cy="${emu(h)}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+}
+function slideXML(shapes){
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="F7F5F2"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${shapes.join('\n')}
+</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+}
+function slideRelsXML(rels,slideIdx){
+  const imgRels=rels.map(r=>`<Relationship Id="${r.rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/img_${slideIdx}_${r.idx}.${r.ext}"/>`).join('\n');
+  const layoutRel=`<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${slideIdx+1}.xml"/>`;
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${layoutRel}${imgRels}</Relationships>`;
+}
+function contentTypesXML(){
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Default Extension="jpeg" ContentType="image/jpeg"/>
+<Default Extension="jpg" ContentType="image/jpeg"/>
+<Default Extension="png" ContentType="image/png"/>
+<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+${Array.from({length:100},(_,i)=>`<Override PartName="/ppt/slides/slide${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/><Override PartName="/ppt/slideLayouts/slideLayout${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`).join('')}
+</Types>`;
+}
+function relsXML(){
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>`;
+}
+function presentationXML(n){
+  const sldIds=Array.from({length:n},(_,i)=>`<p:sldId id="${256+i}" r:id="rId${i+2}"/>`).join('');
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+  xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+<p:sldIdLst>${sldIds}</p:sldIdLst>
+<p:sldSz cx="9144000" cy="6858000" type="screen4x3"/>
+<p:notesSz cx="6858000" cy="9144000"/>
+</p:presentation>`;
+}
+function presRelsXML(n){
+  const sldRels=Array.from({length:n},(_,i)=>`<Relationship Id="rId${i+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i+1}.xml"/>`).join('');
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>${sldRels}</Relationships>`;
+}
+function themeXML(){return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Shoot"><a:themeElements><a:clrScheme name="Shoot"><a:dk1><a:srgbClr val="181614"/></a:dk1><a:lt1><a:srgbClr val="F7F5F2"/></a:lt1><a:dk2><a:srgbClr val="5A5650"/></a:dk2><a:lt2><a:srgbClr val="E4E0DA"/></a:lt2><a:accent1><a:srgbClr val="BFA882"/></a:accent1><a:accent2><a:srgbClr val="BFA882"/></a:accent2><a:accent3><a:srgbClr val="BFA882"/></a:accent3><a:accent4><a:srgbClr val="BFA882"/></a:accent4><a:accent5><a:srgbClr val="BFA882"/></a:accent5><a:accent6><a:srgbClr val="BFA882"/></a:accent6><a:hlink><a:srgbClr val="BFA882"/></a:hlink><a:folHlink><a:srgbClr val="A8A49E"/></a:folHlink></a:clrScheme><a:fontScheme name="Shoot"><a:majorFont><a:latin typeface="Georgia"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Arial"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme><a:fmtScheme name="Shoot"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`;}
+function layoutXML(){return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldLayout xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" type="blank"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;}
+function layoutRelsXML(){return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`;}
+function masterXML(){return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst>${Array.from({length:100},(_,i)=>`<p:sldLayoutId id="${2147483649+i}" r:id="rId${i+1}"/>`).join('')}</p:sldLayoutIdLst><p:txStyles><p:titleStyle><a:lvl1pPr><a:defRPr lang="ja-JP"/></a:lvl1pPr></p:titleStyle><p:bodyStyle><a:lvl1pPr><a:defRPr lang="ja-JP"/></a:lvl1pPr></p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr lang="ja-JP"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>`;}
+function masterRelsXML(n){return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId0" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>${Array.from({length:Math.max(n,1)},(_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${i+1}.xml"/>`).join('')}</Relationships>`;}
+
+// ═══════════════════════════════
+//  EDIT
+// ═══════════════════════════════
+function fabClick(){openNewStyling();}
+function openNewStyling(){
+  S.stylingId=null;S.editPhoto=null;
+  clearEditForm();populateBotSel();
+  document.getElementById('ef-del').style.display='none';
+  showPage('edit');setHdr('edit');
+}
+function openEdit(id){
+  const day=getDay(S.dayId);const s=day.stylings.find(x=>x.id===id);if(!s)return;
+  S.stylingId=id;S.editPhoto=s.photo||null;
+  clearEditForm();populateBotSel();
+  document.getElementById('ef-name').value=s.name||'';
+  document.getElementById('ef-memo').value=s.memo||'';
+  // set bottoms
+  const sel=document.getElementById('ef-bottoms-sel');
+  sel.value=s.bottoms||'';
+  // ref photos
+  S.editRefPhotos=(s.refPhotos||[]).map(url=>({dataUrl:url,id:uid()}));
+  renderRefScroll();
+  if(s.photo){
+    document.getElementById('ef-preview').src=s.photo;
+    document.getElementById('ef-preview').style.display='block';
+    document.getElementById('ef-hint').style.display='none';
+  }
+  document.getElementById('ef-del').style.display='block';
+  showPage('edit');setHdr('edit');
+}
+function clearEditForm(){
+  document.getElementById('ef-name').value='';
+  document.getElementById('ef-memo').value='';
+  document.getElementById('ef-preview').src='';
+  document.getElementById('ef-preview').style.display='none';
+  document.getElementById('ef-hint').style.display='flex';
+  document.getElementById('ef-file').value='';
+  document.getElementById('ef-bot-new-wrap').style.display='none';
+  document.getElementById('ef-bot-new').value='';
+  S.editRefPhotos=[];
+  renderRefScroll();
+}
+function populateBotSel(){
+  const day=getDay(S.dayId);if(!day)return;
+  const sel=document.getElementById('ef-bottoms-sel');
+  sel.innerHTML='<option value="">未分類</option>';
+  (day.bottoms||[]).forEach(b=>{
+    const o=document.createElement('option');o.value=b;o.textContent=b;sel.appendChild(o);
+  });
+  const n=document.createElement('option');n.value='__new__';n.textContent='＋ 新しいボトムスを追加';sel.appendChild(n);
+}
+function onBotSel(sel){
+  document.getElementById('ef-bot-new-wrap').style.display=sel.value==='__new__'?'block':'none';
+}
+function onEditPhoto(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    S.editPhoto=e.target.result;
+    document.getElementById('ef-preview').src=e.target.result;
+    document.getElementById('ef-preview').style.display='block';
+    document.getElementById('ef-hint').style.display='none';
+  };
+  r.readAsDataURL(f);
+}
+function saveEdit(){
+  const day=getDay(S.dayId);if(!day)return;
+  const name=document.getElementById('ef-name').value.trim();
+  const memo=document.getElementById('ef-memo').value.trim();
+  const selVal=document.getElementById('ef-bottoms-sel').value;
+  let bottoms=selVal==='__new__'?document.getElementById('ef-bot-new').value.trim():selVal;
+  if(!day.bottoms)day.bottoms=[];
+  if(bottoms&&!day.bottoms.includes(bottoms))day.bottoms.push(bottoms);
+  if(S.stylingId){
+    const s=day.stylings.find(x=>x.id===S.stylingId);
+    if(s){s.name=name;s.memo=memo;s.bottoms=bottoms;s.refPhotos=S.editRefPhotos.map(r=>r.dataUrl);if(S.editPhoto)s.photo=S.editPhoto;}
+  }else{
+    day.stylings.push({id:uid(),name,memo,bottoms,photo:S.editPhoto,refPhotos:S.editRefPhotos.map(r=>r.dataUrl),done:false});
+  }
+  save();showPage('detail');setHdr('detail');renderDetail();toast('保存しました ✓');
+}
+function deleteStyling(){
+  const day=getDay(S.dayId);if(!day||!S.stylingId)return;
+  day.stylings=day.stylings.filter(s=>s.id!==S.stylingId);
+  save();showPage('detail');setHdr('detail');renderDetail();toast('削除しました');
+}
+
+// ═══════════════════════════════
+//  REF PHOTOS
+// ═══════════════════════════════
+function renderRefScroll(){
+  const el=document.getElementById('ef-ref-scroll');
+  const thumbs=S.editRefPhotos.map((p,i)=>`
+    <div class="ref-thumb-wrap">
+      <img class="ref-thumb" src="${p.dataUrl}">
+      <button class="ref-remove" onclick="removeRef(${i})">×</button>
+    </div>`).join('');
+  el.innerHTML=thumbs+`
+    <div class="ref-add-btn" onclick="document.getElementById('ef-ref-file').click()">
+      <input type="file" id="ef-ref-file" accept="image/*" multiple onchange="onRefPhotos(this)">
+      <span>＋</span><small>追加</small>
+    </div>`;
+}
+function onRefPhotos(input){
+  const files=[...input.files];if(!files.length)return;
+  let n=0;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      S.editRefPhotos.push({dataUrl:e.target.result,id:uid()});
+      n++;if(n===files.length)renderRefScroll();
+    };
+    r.readAsDataURL(f);
+  });
+  input.value='';
+}
+function removeRef(i){
+  S.editRefPhotos.splice(i,1);renderRefScroll();
+}
+
+// ═══════════════════════════════
+//  BULK IMPORT
+// ═══════════════════════════════
+function openBulk(){
+  S.bulkPhotos=[];
+  document.getElementById('bulk-grid').innerHTML='';
+  document.getElementById('bulk-confirm-area').style.display='none';
+  document.getElementById('bulk-file').value='';
+  showPage('bulk');setHdr('bulk');
+}
+function onBulkFiles(input){
+  const files=[...input.files];if(!files.length)return;
+  let loaded=0;
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      S.bulkPhotos.push({dataUrl:e.target.result,id:uid()});
+      loaded++;
+      if(loaded===files.length)renderBulkGrid();
+    };
+    r.readAsDataURL(f);
+  });
+}
+function renderBulkGrid(){
+  const el=document.getElementById('bulk-grid');
+  el.innerHTML=S.bulkPhotos.map((p,i)=>`
+    <div class="bulk-thumb-wrap">
+      <img class="bulk-thumb" src="${p.dataUrl}">
+      <button class="bulk-remove btn" onclick="removeBulkPhoto(${i})">×</button>
+    </div>`).join('');
+  document.getElementById('bulk-confirm-area').style.display=S.bulkPhotos.length?'block':'none';
+}
+function removeBulkPhoto(i){
+  S.bulkPhotos.splice(i,1);renderBulkGrid();
+}
+function confirmBulk(){
+  const day=getDay(S.dayId);if(!day)return;
+  S.bulkPhotos.forEach(p=>{
+    day.stylings.push({id:p.id,name:'',memo:'',bottoms:'',photo:p.dataUrl,refPhotos:[],done:false});
+  });
+  save();
+  toast(`${S.bulkPhotos.length}枚を未分類に追加しました`);
+  S.bulkPhotos=[];
+  showPage('detail');setHdr('detail');renderDetail();
+}
+
+// FAB long-press or second button for bulk
+// We'll use a context menu via long-press
+let fabTimer=null;
+document.getElementById('fab').addEventListener('pointerdown',()=>{
+  fabTimer=setTimeout(()=>{fabTimer=null;openBulk();},600);
+});
+document.getElementById('fab').addEventListener('pointerup',()=>{
+  if(fabTimer){clearTimeout(fabTimer);fabTimer=null;openNewStyling();}
+});
+document.getElementById('fab').addEventListener('pointerleave',()=>{
+  if(fabTimer){clearTimeout(fabTimer);fabTimer=null;}
+});
+
+// Also show bulk button in detail header
+function setHdr(p){
+  const logo=document.getElementById('hdr-logo');
+  const title=document.getElementById('hdr-title');
+  const back=document.getElementById('back-btn');
+  const r=document.getElementById('hdr-r');
+  const fab=document.getElementById('fab');
+  back.classList.remove('on');logo.style.display='block';title.textContent='';r.innerHTML='';fab.classList.add('off');
+  if(p==='detail'){
+    back.classList.add('on');logo.style.display='none';
+    const d=getDay(S.dayId);
+    title.textContent=d?fmtDate(d.date):'';
+    r.innerHTML=`<button class="btn btn-sm-out" onclick="openBulk()" title="複数写真を一括登録">📂 一括</button>`;
+    fab.classList.remove('off');
+  }
+  if(p==='edit'){back.classList.add('on');logo.style.display='none';title.textContent=S.stylingId?'EDIT':'NEW STYLING';}
+  if(p==='bulk'){back.classList.add('on');logo.style.display='none';title.textContent='BULK IMPORT';}
+}
+
+// ═══════════════════════════════
+//  INIT
+// ═══════════════════════════════
+load();renderTop();
+</script>
+</body>
+</html>
