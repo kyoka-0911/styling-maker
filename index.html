@@ -826,16 +826,38 @@ function populateBotSel(){
 function onBotSel(sel){
   document.getElementById('ef-bot-new-wrap').style.display=sel.value==='__new__'?'block':'none';
 }
-function onEditPhoto(input){
+// ── 画像圧縮（全写真共通）──
+// メイン写真: 最大800px, 品質0.7 → 約100KB以下
+// 参考画像:   最大400px, 品質0.65 → 約50KB以下
+function compressImage(file, maxSize, quality){
+  return new Promise(resolve=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxSize||h>maxSize){
+          if(w>h){h=Math.round(h*maxSize/w);w=maxSize;}
+          else{w=Math.round(w*maxSize/h);h=maxSize;}
+        }
+        const c=document.createElement('canvas');
+        c.width=w;c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',quality));
+      };
+      img.src=e.target.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+async function onEditPhoto(input){
   const f=input.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    S.editPhoto=e.target.result;
-    document.getElementById('ef-preview').src=e.target.result;
-    document.getElementById('ef-preview').style.display='block';
-    document.getElementById('ef-hint').style.display='none';
-  };
-  r.readAsDataURL(f);
+  const dataUrl=await compressImage(f,800,0.7);
+  S.editPhoto=dataUrl;
+  document.getElementById('ef-preview').src=dataUrl;
+  document.getElementById('ef-preview').style.display='block';
+  document.getElementById('ef-hint').style.display='none';
 }
 function saveEdit(){
   const day=getDay(S.dayId);if(!day)return;
@@ -875,17 +897,13 @@ function renderRefScroll(){
       <span>＋</span><small>追加</small>
     </div>`;
 }
-function onRefPhotos(input){
+async function onRefPhotos(input){
   const files=[...input.files];if(!files.length)return;
-  let n=0;
-  files.forEach(f=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      S.editRefPhotos.push({dataUrl:e.target.result,id:uid()});
-      n++;if(n===files.length)renderRefScroll();
-    };
-    r.readAsDataURL(f);
-  });
+  for(const f of files){
+    const dataUrl=await compressImage(f,400,0.65);
+    S.editRefPhotos.push({dataUrl,id:uid()});
+  }
+  renderRefScroll();
   input.value='';
 }
 function removeRef(i){
@@ -902,18 +920,15 @@ function openBulk(){
   document.getElementById('bulk-file').value='';
   showPage('bulk');setHdr('bulk');
 }
-function onBulkFiles(input){
+async function onBulkFiles(input){
   const files=[...input.files];if(!files.length)return;
-  let loaded=0;
-  files.forEach(f=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      S.bulkPhotos.push({dataUrl:e.target.result,id:uid()});
-      loaded++;
-      if(loaded===files.length)renderBulkGrid();
-    };
-    r.readAsDataURL(f);
-  });
+  showLoading('画像を圧縮中...');
+  for(const f of files){
+    const dataUrl=await compressImage(f,800,0.7);
+    S.bulkPhotos.push({dataUrl,id:uid()});
+  }
+  hideLoading();
+  renderBulkGrid();
 }
 function renderBulkGrid(){
   const el=document.getElementById('bulk-grid');
